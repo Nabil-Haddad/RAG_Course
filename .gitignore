@@ -1,0 +1,13 @@
+.env
+
+.ragenv/
+
+__pycache__/
+
+
+*.pyc
+*.pyo
+data/raw/
+*.egg-info/
+.DS_Store
+.ipynb_checkpoints/

@@ -1,0 +1,53 @@
+[
+  {
+    "content": "Retrieval-Augmented Generation (RAG) is an AI architecture that combines a retrieval system with a large language model. Instead of relying solely on knowledge baked into the model's weights during training,",
+    "source": "sample_rag_intro.txt",
+    "chunk_id": "sample_rag_intro_full_c000",
+    "page_num": null,
+    "metadata": {
+      "file_type": "txt",
+      "char_count": 451,
+      "path": "data/raw/sample_rag_intro.txt",
+      "chunk_index": 0,
+      "start_word": 0,
+      "end_word": 30,
+      "chunk_size": 30,
+      "overlap": 5
+    },
+    "embedding": []
+  },
+  {
+    "content": "the model's weights during training, RAG retrieves relevant passages from an external document store at query time and passes them to the model as additional context. This grounds the model's",
+    "source": "sample_rag_intro.txt",
+    "chunk_id": "sample_rag_intro_full_c000",
+    "page_num": null,
+    "metadata": {
+      "file_type": "txt",
+      "char_count": 451,
+      "path": "data/raw/sample_rag_intro.txt",
+      "chunk_index": 0,
+      "start_word": 25,
+      "end_word": 55,
+      "chunk_size": 30,
+      "overlap": 5
+    },
+    "embedding": []
+  },
+  {
+    "content": "context. This grounds the model's outputs in authoritative, up-to-date information and dramatically reduces hallucination.",
+    "source": "sample_rag_intro.txt",
+    "chunk_id": "sample_rag_intro_full_c025",
+    "page_num": null,
+    "metadata": {
+      "file_type": "txt",
+      "char_count": 451,
+      "path": "data/raw/sample_rag_intro.txt",
+      "chunk_index": 25,
+      "start_word": 50,
+      "end_word": 64,
+      "chunk_size": 30,
+      "overlap": 5
+    },
+    "embedding": []
+  }
+]

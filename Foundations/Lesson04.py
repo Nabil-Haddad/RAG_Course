@@ -74,3 +74,32 @@ con_time = time.perf_counter() - start
 print(f"Sequential : {seq_time:.3f}s  ({len(seq_results)} embeddings)")
 print(f"Concurrent : {con_time:.3f}s  ({len(con_results)} embeddings)")
 print(f"Speedup : {seq_time / con_time:.1f}x faster")
+
+
+
+# PART 2 — async def, await, asyncio.run()
+
+# async def  — marks a function as a coroutine. Calling it returns a coroutine
+#              object; it does NOT run the function. You must await it.
+# await      — runs a coroutine and pauses the current one until it finishes.
+#              Can only be used inside an async def function.
+# asyncio.run() — the entry point. Creates the event loop, runs one top-level
+#                 coroutine, then closes the loop. Use once at the top level.
+
+
+
+async def fetch_answer(query: str, latency : int = 0.85)->str:
+    await asyncio.sleep(latency)
+    return f"Answer to: {query}"
+
+
+async def rag_query(question:str)-> dict:
+    query_vec = await fake_embed(question)
+    answer = await fetch_answer(query=question)
+    return {"question": question, "answer": answer, "query_vec": query_vec}
+
+result = asyncio.run(rag_query("What is RAG?"))
+
+print(f"question : {result['question']}")
+print(f"answer : {result['answer']}")
+print(f"vec dims : {len(result['query_vec'])}")

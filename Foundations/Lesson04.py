@@ -243,3 +243,30 @@ async def compare():
     print("For legacy sync code, use asyncio.to_thread(blocking_fn, args)")
  
 asyncio.run(compare())
+
+
+
+# PART 6 — asyncio.to_thread(): RUNNING SYNC CODE SAFELY
+
+
+# Sometimes you must call a sync library inside an async pipeline.
+# asyncio.to_thread() runs the blocking call in a thread pool, the event
+# loop stays free for other coroutines while the thread runs.
+
+
+
+# a hypothetical sync function
+def slow_sync_operation(text: str) -> int:
+    time.sleep(0.01)   # simulates blocking I/O
+    return len(text.split())
+
+
+# Runs slow_sync_operation in a thread pool for each text
+async def process_with_thread(texts: list[str]) -> list[int]:
+    tasks = [asyncio.to_thread(slow_sync_operation, text) for text in texts]
+    return await asyncio.gather(*tasks)
+ 
+sample_texts = ["hello world", "RAG is great for grounding outputs", "async Python"]
+counts = asyncio.run(process_with_thread(sample_texts))
+print(f"Word counts via to_thread: {counts}")
+ 

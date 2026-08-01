@@ -103,3 +103,47 @@ result = asyncio.run(rag_query("What is RAG?"))
 print(f"question : {result['question']}")
 print(f"answer : {result['answer']}")
 print(f"vec dims : {len(result['query_vec'])}")
+
+
+
+# PART 3 — asyncio.Semaphore: RATE-LIMIT PROTECTION
+
+# Problem: asyncio.gather() with 5,000 tasks fires ALL 5,000 API calls at once.
+# OpenAI Tier 1 allows ~3,000 requests per minute (50/second).
+# 5,000 simultaneous calls → mass 429 Too Many Requests errors.
+
+# Solution: asyncio.Semaphore(N) limits concurrent coroutines to N at any time.
+# The others wait in queue. When one finishes, the next starts.
+# This is like a bouncer at a club — only N people inside at once.
+
+
+MAX_CONCURRENT = 5
+semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+
+# Tarck how many calls are running simultaneously 
+active_calls = 0
+max_observed = 0
+
+async def rate_limited_embed(text:str)->list[float]:
+    global active_calls, max_observed
+    async with semaphore:
+        active_calls += 1
+        max_observed = max(max_observed, active_calls)
+        result = await fake_embed(text, latency= 0.02)
+        active_calls -=1
+        return result
+
+
+async def embed_with_limit(texts: list[str])-> list[list[float]]:
+    tasks = [rate_limited_embed(text) for text in texts]
+    return await asyncio.gather(*tasks)
+
+
+chunks_30 = [f"chunk {i}" for i in range(30)]
+vectors = asyncio.run(embed_with_limit(chunks_30))
+
+
+print(f"Embedded  : {len(vectors)} chunks")
+print(f"Max concurrent : {max_observed} (limit was {MAX_CONCURRENT})")
+print(f"Limit respected : {max_observed <= MAX_CONCURRENT}")
+ 

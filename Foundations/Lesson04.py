@@ -206,3 +206,40 @@ asyncio.sleep = fast_sleep
  
 asyncio.run(demo_retry())
 asyncio.sleep = original_sleep  # restore
+
+
+
+# PART 5 — COMMON MISTAKE: BLOCKING THE EVENT LOOP
+
+
+# The event loop is single-threaded. If you call a blocking function inside
+# an async function, it freezes the ENTIRE event loop, no other coroutine
+# can run until it returns.
+
+# WRONG patterns:
+#   import time; time.sleep(1)         # blocks the loop for 1 second
+#   import requests; requests.get(url) # synchronous HTTP — blocks the loop
+
+# RIGHT patterns:
+#   await asyncio.sleep(1)             # yields control; loop runs other tasks
+#   async with httpx.AsyncClient() as client: await client.get(url)
+
+
+async def blocking_bad_example()->str:
+    time.sleep(0.001)
+    return "finished (but blocked the loop)"
+
+
+async def none_blocking_good_example()->str:
+    await asyncio.sleep(0.01)
+    return "finished (loop was free during wait)"
+
+async def compare():
+    r1 = await blocking_bad_example()
+    r2 = await none_blocking_good_example()
+    print(f"Blocking : {r1}")
+    print(f"Non-blocking: {r2}")
+    print("Rule: inside async def, always use await/async equivalents.")
+    print("For legacy sync code, use asyncio.to_thread(blocking_fn, args)")
+ 
+asyncio.run(compare())

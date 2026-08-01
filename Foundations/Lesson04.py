@@ -146,4 +146,63 @@ vectors = asyncio.run(embed_with_limit(chunks_30))
 print(f"Embedded  : {len(vectors)} chunks")
 print(f"Max concurrent : {max_observed} (limit was {MAX_CONCURRENT})")
 print(f"Limit respected : {max_observed <= MAX_CONCURRENT}")
+
+
+
+# PART 4 — EXPONENTIAL BACKOFF RETR
+
+# Even with a Semaphore, APIs occasionally return 429 or 500 errors.
+# Retrying immediately makes it worse. Exponential backoff waits longer
+# after each failure: 1s, 2s, 4s, 8s — giving the API time to recover.
+
+# Adding jitter (random.uniform(0, 0.5)) prevents a "thundering herd":
+# if 100 coroutines all hit a rate limit at the same time and all wait
+# exactly 2 seconds, they all retry simultaneously and hit the limit again.
+# Jitter spreads the retries out.
+
+
+async def with_retry(coro_fn, max_retries: int = 4):
+    last_exc = None
+    for attempt in range(max_retries):
+        try:
+            return await coro_fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt == max_retries - 1:
+                raise   # give up — re-raise after final attempt
  
+            # wait = 1s, 2s, 4s, 8s ... plus random jitter
+            wait = (2 ** attempt) + random.uniform(0, 0.5)
+            print(f"    Attempt {attempt + 1} failed: {exc!r}. Retrying in {wait:.2f}s...")
+            await asyncio.sleep(wait)
+
+ 
+# Demonstrate: a flaky function that fails on the first two attempts
+attempt_counter = 0
+ 
+async def flaky_embed(text: str) -> list[float]:
+    #Fails twice then succeeds — simulates intermittent API errors.
+    global attempt_counter
+    attempt_counter += 1
+    if attempt_counter < 3:
+        raise ConnectionError(f"429 Too Many Requests (attempt {attempt_counter})")
+    return [0.1, 0.2, 0.3]
+
+
+
+async def demo_retry():
+    global attempt_counter
+    attempt_counter = 0   # reset for clean demo
+    result = await with_retry(lambda: flaky_embed("test text"), max_retries=4)
+    print(f"  Succeeded on attempt {attempt_counter} — result: {result}")
+
+
+
+# asyncio.sleep in the retry is long for demos — patch it for speed
+original_sleep = asyncio.sleep
+async def fast_sleep(seconds):
+    await original_sleep(0.01)  # always sleep 10ms in tests
+asyncio.sleep = fast_sleep
+ 
+asyncio.run(demo_retry())
+asyncio.sleep = original_sleep  # restore

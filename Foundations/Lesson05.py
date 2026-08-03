@@ -105,3 +105,71 @@ corpus: Corpus = [
 ]
 top = retrieve_top_k([0.85, 0.15], corpus, k=2)
 print(f"retrieve_top_k  : {[text[:25] for text, _ in top]}")
+
+
+
+# PART 2 — STRUCTURED JSON LOGGING
+
+# print() is fine for debugging. For production you need logs that are:
+#   - Machine-readable (CloudWatch, Datadog, Grafana can parse JSON)
+#   - Filterable ("show me all queries slower than 2000ms")
+#   - Auditable ("who queried what, at what time, from which source")
+
+# Every log line emitted by a RAG pipeline should include:
+#   timestamp, level, logger name, message, and domain-specific fields.
+
+
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        entry: dict[str, Any] = {
+            "timestamp" : datetime.now(UTC).isoformat(),  # ISO 8601, UTC, timezone-aware
+            "level" : record.levelname,
+            "logger" : record.name,
+            "message" : record.getMessage(),
+        }
+        # Merge any extra fields the caller passed via `extra={...}`
+        if hasattr(record, "extra"):
+            entry.update(record.extra)
+        # Attach exception info if present
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
+ 
+        return json.dumps(entry, default=str)  # default=str handles non-serialisable types
+ 
+ 
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(JSONFormatter())
+        logger.addHandler(handler)
+    return logger
+ 
+ 
+logger = get_logger("rag_pipeline")
+ 
+# Standard log call — message only
+logger.info("Pipeline started")
+ 
+# Log with extra domain-specific fields
+def log_query_complete(logger  : logging.Logger,query   : str,n_chunks: int,ret_ms  : float,gen_ms  : float) -> None:
+    record = logging.LogRecord(
+        name="rag_pipeline", level=logging.INFO,
+        pathname="", lineno=0,
+        msg="query_complete", args=(), exc_info=None
+    )
+    record.extra = {
+        "query_preview" : query[:80],
+        "chunks_used" : n_chunks,
+        "retrieval_ms" : round(ret_ms),
+        "generation_ms" : round(gen_ms),
+        "total_ms" : round(ret_ms + gen_ms),
+    }
+    logger.handle(record)
+ 
+log_query_complete(logger, "What is the FCA consumer duty?", 5, 142.3, 887.6)
+ 
+# Log a warning — for non-critical issues like short chunks being skipped
+logger.warning("Short chunk skipped", extra={"chunk_id": "fca_p3_c007", "word_count": 4})

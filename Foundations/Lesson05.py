@@ -154,7 +154,7 @@ logger = get_logger("rag_pipeline")
 logger.info("Pipeline started")
  
 # Log with extra domain-specific fields
-def log_query_complete(logger  : logging.Logger,query   : str,n_chunks: int,ret_ms  : float,gen_ms  : float) -> None:
+def log_query_complete(logger: logging.Logger, query : str, n_chunks: int, ret_ms: float,gen_ms:float) -> None:
     record = logging.LogRecord(
         name="rag_pipeline", level=logging.INFO,
         pathname="", lineno=0,
@@ -173,3 +173,58 @@ log_query_complete(logger, "What is the FCA consumer duty?", 5, 142.3, 887.6)
  
 # Log a warning — for non-critical issues like short chunks being skipped
 logger.warning("Short chunk skipped", extra={"chunk_id": "fca_p3_c007", "word_count": 4})
+
+
+
+# PART 3 — CONTEXT MANAGERS: SAFE RESOURCE HANDLING
+
+
+# A context manager guarantees that cleanup code runs even if an exception
+# is raised inside the `with` block. You already use them:
+#   `with open(...) as f:`  → file is closed even if you raise inside
+#   `async with semaphore:` → semaphore is released even if you raise inside
+
+
+# For RAG, write context managers for:
+#   - Vector DB connections (must be closed cleanly)
+#   - Temporary directories (must be deleted after use)
+#   - Timing blocks (measure latency of pipeline segments)
+ 
+print("\n--- Part 3: Context managers ---")
+ 
+@contextmanager
+def timer(label: str) -> Generator[None, None, None]:
+    start = time.perf_counter()
+    try:
+        yield   # execution enters the `with` block here
+    finally:
+        # `finally` runs even if an exception was raised inside the block
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.info("timer", extra={"label": label, "elapsed_ms": round(elapsed_ms, 1)})
+        print(f"  [{label}] {elapsed_ms:.1f}ms")
+ 
+# Demonstrate the timer
+with timer("fake_embedding_step"):
+    time.sleep(0.05)   # simulate work
+ 
+with timer("fake_retrieval_step"):
+    _ = [i**2 for i in range(100_000)]
+ 
+@contextmanager
+def temp_output_dir(base: Path) -> Generator[Path, None, None]:
+    # Create a temporary directory
+    import shutil
+    import uuid
+    tmp_dir = base / f"tmp_{uuid.uuid4().hex[:8]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Created temp dir: {tmp_dir}")
+    try:
+        yield tmp_dir
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        print(f"Cleaned up temp dir: {tmp_dir}")
+ 
+with temp_output_dir(Path("/tmp")) as out_dir:
+    (out_dir / "test.json").write_text('{"status": "ok"}')
+    print(f"Wrote to: {out_dir / 'test.json'}")
+# Directory is deleted here automatically
